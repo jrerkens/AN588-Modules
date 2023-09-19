@@ -1,0 +1,225 @@
+---
+title: "Module 6"
+author: "Jimmy Erkens"
+date: "`r Sys.Date()`"
+output: 
+    html_document:
+     toc: true
+     number_sections: true
+     toc_float: true
+     code_folding: show
+     theme: journal
+---
+
+# Preliminaries
+
+## Loading `tidyverse`
+```{r, packages, warning = F}
+library(curl)
+library(tidyverse)
+```
+## Loading the data using `curl`
+
+```{r, data_init, warning = F}
+country_data <- read_csv(curl("https://raw.githubusercontent.com/fuzzyatelin/fuzzyatelin.github.io/master/AN588_Fall23/Country-Data-2016.csv")) # I disagree with the syntax in the module, we don't need to make a new variable f
+```
+
+Hey! Heads up the subheader "For univariate data" isn't formatted correctly
+
+# Some useful procedures for data analysis
+
+## Challenge 1
+
+```{r}
+summary(country_data$population) # median population is 4.912 x 10^6 people
+summary(country_data$area) # median area is 69,700 
+
+# using tidyverse to make a new column for population density
+# here we use a pipe operator and the mutate() function to make it work
+country_data <- country_data %>% mutate(pop_density = population/area)
+country_data[order(country_data$pop_density, decreasing = T), ][1:10] # most dense countries!
+country_data[order(country_data$pop_density, decreasing = F), ][1:10] # least dense countries!
+```
+
+## Challenge 2
+
+Fun with plotting! Sorry! `ggplot2` is better :)
+
+```{r}
+par(mfrow = c(2, 3))
+boxplot(country_data$population)
+boxplot(log(country_data$population)) # log standardizes non-normal data (generally!) this is a massive generalization!
+boxplot(country_data$area)
+boxplot(log(country_data$area)) 
+barplot(country_data$population)
+barplot(country_data$area)
+```
+
+## Challenge 3
+
+```{r}
+par(mfrow = c(1, 2))  # gives us two panels
+attach(country_data) # so this is what we do for when we don't use ggplot()
+hist(log(population), freq = FALSE, col = "red", main = "Plot 1", xlab = "log(population size)",
+    ylab = "density", ylim = c(0, 0.2))
+hist(log(area), freq = FALSE, col = "red", main = "Plot 2", xlab = "log(area)",
+    ylab = "density", ylim = c(0, 0.2))
+
+par(mfrow = c(1, 1))  # set up one panel and redraw the log(population) histogram
+hist(log(population), freq = FALSE, col = "white", main = "My Plot with Mean and Density",
+    xlab = "log(population size)", ylab = "density", ylim = c(0, 0.2))
+abline(v = mean(log(population), na.rm = TRUE), col = "blue")
+lines(density(log(population), na.rm = TRUE), col = "green")
+detach(country_data) # note how attach() and detach() work when we work with `base` packages
+```
+
+## Challenge 4
+
+```{r}
+sort(table(country_data$govt_form), decreasing = TRUE) # repubic is the most common!
+```
+
+I'm more than a little disgusted at the sheer number of overseas territories and dependencies. Republic is the most common!
+
+
+## Challenge 5
+
+```{r, challenge_5}
+kandc <- read_csv(curl("https://raw.githubusercontent.com/fuzzyatelin/fuzzyatelin.github.io/master/AN588_Fall23/KamilarAndCooperData.csv"))
+attach(kandc)
+head(kandc)
+summary(kandc)
+boxplot(log(Body_mass_female_mean) ~ Family, kandc)
+detach(kandc)
+
+# plotting using ggplot! The better way to plot!
+library(ggplot2)
+p <- ggplot(data = kandc, aes(x = Family, y = log(Body_mass_female_mean)))  #define the variables
+p <- p + geom_boxplot()  #graph them in a boxplot
+p <- p + theme(axis.text.x = element_text(angle = 90))  #put x-axis names at 90deg
+p <- p + ylab("log(Female Body Mass)")  #rename y-axis title
+p  #show me the graph
+```
+
+## Challenge 6
+
+```{r, scatterplot, warning = F}
+attach(kandc)
+par(mfrow = c(1, 2))
+plot(x = Body_mass_female_mean, y = Brain_Size_Female_Mean)
+plot(x = log(Body_mass_female_mean), y = log(Brain_Size_Female_Mean))
+```
+
+Using `ggplot2()`! I get why we're initializing but I don't necessarily agree with this syntax for practical use.
+
+```{r, ggplot}
+p <- ggplot(data = kandc, aes(x = log(Body_mass_female_mean), y = log(Brain_Size_Female_Mean),
+    color = factor(Family)))  # first, we build a plot object and color points by Family
+p <- p + xlab("log(Female Body Mass)") + ylab("log(Female Brain Size)")  # then we modify the axis labels
+p <- p + geom_point()  # then we make a scatterplot
+p <- p + theme(legend.position = "bottom", legend.title = element_blank())  # then we modify the legend
+p  # and, finally, we plot the object
+```
+
+Faceting!
+
+```{r, facet}
+p <- p + facet_wrap(~Family, ncol = 4)
+p <- p + theme(legend.position = "none")
+p
+```
+
+## Challenge 7
+
+```{r, bivariate}
+p <- ggplot(data = kandc, aes(x = log(Body_mass_female_mean), y = log(MaxLongevity_m)))
+p <- p + geom_point()
+p <- p + geom_smooth(method = "lm")
+p
+```
+
+
+# Aggregating Statistics
+
+```{r}
+aggregate(kandc$Body_mass_female_mean ~ kandc$Family, FUN = "mean", na.rm = TRUE) 
+# grouping by mean! let's see how dplyr makes it easier
+aggregate(x = kandc["Body_mass_female_mean"], by = kandc["Family"], FUN = "mean", na.rm = TRUE)
+# grouping by female mean, note the difference in function
+```
+
+Going through the `dplyr` functions!
+
+```{r}
+s <- filter(kandc, Family == "Hominidae" & Mass_Dimorphism > 2)
+head(s)  # filtering a data frame for certain rows...
+
+
+s <- arrange(kandc, Family, Genus, Body_mass_male_mean)  # rearranging a data frame... NOTE how this is arranged
+head(s)
+
+s <- rename(kandc, Female_Mass = Body_mass_female_mean)
+head(s$Female_Mass)  # renaming columns...
+
+s <- mutate(kandc, Binomial = paste(Genus, Species, sep = " ")) # I feel there's another way to concatenate like this
+head(s$Binomial)  # and adding new columns...
+
+s <- summarise(kandc, avgF = mean(Body_mass_female_mean, na.rm = TRUE), avgM = mean(Body_mass_male_mean,
+    na.rm = TRUE)) # 
+s
+
+# using group_by()
+byFamily <- group_by(kandc, Family)
+byFamily
+
+s <- summarise(byFamily, avgF = mean(Body_mass_female_mean, na.rm = TRUE), avgM = mean(Body_mass_male_mean,
+    na.rm = TRUE))
+s # how does summarise() work with groups!
+
+```
+
+# Piping
+
+```{r}
+s <-                                                             #to create dataframe "s"
+  kandc %>%                                                          #take dataframe "d"
+  group_by(Family) %>%                                           #Group it by Family
+  summarise(avgF = mean(Body_mass_female_mean, na.rm=TRUE),      #And calculate mean male BM
+            avgM = mean(Body_mass_male_mean, na.rm=TRUE))        #And mean female BM
+s
+```
+
+## Challenge 8
+
+```{r}
+s <- kandc %>%
+    mutate(Binomial = paste(Genus, Species, sep = " ")) %>% # I honestly hate strings
+    select(Binomial, Body_mass_female_mean, Body_mass_male_mean, Mass_Dimorphism) %>% # we take these groups
+    group_by(Binomial) %>% # and then attach them to Binomial
+    summarise(avgF = mean(Body_mass_female_mean, na.rm = TRUE), avgM = mean(Body_mass_male_mean,
+        na.rm = TRUE), avgBMD = mean(Mass_Dimorphism, na.rm = TRUE)) # so we then are able to have our summary in accordance w group
+s %>% filter(Binomial == "Chlorocebus pygerythrus" | Binomial == "Lagothrix lagotricha") # there's a better way to do this but I'm lazy
+```
+
+Vervet monkeys are more sexually dimorphic, which makes sense! Woolly monkeys have a larger female body mass!
+
+```{r}
+kandc %>% filter(Family == "Cercopithecidae" | Family == "Atelidae") %>% 
+  ggplot(aes(x = Body_mass_male_mean, fill = Family)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("purple", "green")) + # this is absolutely hideous I can't... 
+  ggtitle("Boxplot of average male mass by Family")
+
+kandc %>% filter(Family == "Cercopithecidae" | Family == "Atelidae") %>% 
+  ggplot(aes(x = Body_mass_female_mean, fill = Family)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("purple", "green")) + # this is absolutely hideous I can't... 
+  ggtitle("Boxplot of average female mass by Family")
+
+kandc %>% filter(Family == "Cercopithecidae" | Family == "Atelidae") %>% group_by(Family) %>% 
+  ggplot(aes(x = Mass_Dimorphism, fill = Family)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("purple", "green")) + # this is absolutely hideous I can't... 
+  ggtitle("Boxplot of average sexual dimorphism by Family")
+```
+
