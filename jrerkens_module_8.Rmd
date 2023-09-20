@@ -1,0 +1,123 @@
+---
+title: "Module 8"
+author: "Jimmy Erkens"
+date: "`r Sys.Date()`"
+output: 
+    html_document:
+     toc: true
+     number_sections: true
+     toc_float: true
+     code_folding: show
+     theme: journal
+---
+
+# Libraries
+
+Libraries or whatever...
+```{r, library}
+library(tidyverse)
+library(manipulate)
+library(tinytex)
+```
+
+
+# Manipulate
+
+Was not familiar with this package, actual goals, wish my stats profs used it in undergrad.
+
+```{r}
+# outcomes <- c(1, 2, 3, 4, 5, 6)
+# manipulate::manipulate(hist(sample(outcomes, n, replace = TRUE), breaks = c(0.5, 1.5, 2.5,
+   # 3.5, 4.5, 5.5, 6.5), probability = TRUE, main = paste("Histogram of Outcomes of ",
+   # n, " Die Rolls", sep = ""), xlab = "roll", ylab = "probability"), n = slider(0,
+   #  10000, initial = 10, step = 10))
+```
+
+# Challenge 1
+
+```{r}
+set.seed(812) # my birthday LEO GANG GANG
+nrolls <- 1000
+roll <- function(n) {
+    sample(1:6, n, replace = TRUE) # sample with replacement go off; changed x to n for sake of ease
+}
+two_dice <- roll(nrolls) + roll(nrolls) # what happens when we take the average of the dice rolls????
+avg_dice <- (roll(nrolls) + roll(nrolls))/2
+hist(two_dice, breaks = c(1.5:12.5), probability = TRUE, main = "Rolling Two Dice",
+    xlab = "sum of rolls", ylab = "probability")
+hist(avg_dice, breaks = seq(from = 0, to = 6, by = 0.5), probability = TRUE, main = "Rolling Two Dice",
+    xlab = "avg of rolls", ylab = "probability")
+```
+
+# Probability
+
+Are we ever gonna do Bayes Rule? For the sake of the other students oh my god I hope not. _We're doing Baye's Rule oml_ <333
+\
+\
+We go through (sorry not sorry) basic probability rules, been there done that.
+
+# Challenge 2
+
+P(face card) = 12/52
+\
+\
+P(a King) = 4/52
+\
+\
+P(a spade) = 13/52
+\
+\
+P(spade | face) = 3/12
+\
+\
+P(King | face) = 4/12
+\
+\
+P(red AND face) = P(red | face) * P(face) = 1/2 * 12/52 = 6/52
+\
+\
+P(club OR face$^c$) = P(club) + P(not a face) - P(club and face) = 43/52 (just copied your math I've done my math-stat community service)
+
+# Discrete Random Variables
+
+Coin flips and rolling a die
+
+```{r}
+outcomes <- c("heads", "tails")
+prob <- c(1/2, 1/2)
+barplot(prob, ylim = c(0, 0.6), names.arg = outcomes, space = 0.1, xlab = "outcome",
+    ylab = "Pr(X = outcome)", main = "Probability Mass Function")
+# im so juvenile bc cumsum makes me giggle still
+cumprob <- cumsum(prob)
+barplot(cumprob, names.arg = outcomes, space = 0.1, xlab = "outcome", ylab = "Cumulative Pr(X)",
+    main = "Cumulative Probability")
+```
+
+Beta distribution
+
+```{r}
+a <- 2
+b <- 1
+K <- 2
+x <- seq(from = 0, to = 1, by = 0.025)
+fx <- K * x^(a - 1) * (1 - x)^(b - 1)
+lower_x <- seq(from = -0.25, to = 0, by = 0.025)  # add some values of x less than zero
+upper_x <- seq(from = 1, to = 1.25, by = 0.025)  # add some values of x greater than one
+lower_fx <- rep(0, 11)  # add fx=0 values to x<0
+upper_fx <- rep(0, 11)  # add fx=0 values to x>1
+x <- c(lower_x, x, upper_x)  # paste xs together
+fx <- c(lower_fx, fx, upper_fx)  # paste fxs together
+d <- as.data.frame(cbind(x, fx))
+p <- ggplot(data = d, aes(x = x, y = fx)) + xlab("x") + ylab("f(x)") + geom_line()
+p
+```
+
+Cumulative function
+
+```{r}
+x <- seq(from = 0, to = 1, by = 0.005)
+prob <- 0.5 * x * K * x^(a - 1) * (1 - x)^(b - 1)
+barplot(prob, names.arg = x, space = 0, main = "Cumulative Probability", xlab = "x",
+    ylab = "Pr(X ≤ x)")
+```
+

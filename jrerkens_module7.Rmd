@@ -1,0 +1,165 @@
+---
+title: "Module 7"
+author: "Jimmy Erkens"
+date: "`r Sys.Date()`"
+output: 
+    html_document:
+     toc: true
+     number_sections: true
+     toc_float: true
+     code_folding: show
+     theme: journal
+---
+
+# Libraries
+
+```{r}
+library(tidyverse)
+library(sciplot)
+```
+
+# Important terminologies
+
+
+    Population = includes all of the elements from a set of data (e.g., all of the vervet monkeys in the world) = N 
+    Sample = one or more observations from a population (e.g., the set of vervets living in South Africa, the set of vervet skeletons found in a museum) = n
+    Parameter = a measurable characteristic of a population (e.g., the mean value of the femur length of all vervets)
+    Statistic = a measureable characteristic about a sample (e.g., the mean femur length of vervet monkey femurs found at the American Museum of Natural History)
+
+I actually disagree with these definitions. All vervet monkeys in the world is a population, but so are all vervet monkeys in South Africa. A sample is a subset of a population. I agree with the definition of a parameter. I disagree with the definition of statistic. A statistic is simply just a function of data. 
+
+# Measuring central tendancy
+
+## Challenge 1
+
+```{r}
+x <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 25, 50, 100, 200, 1000)
+gm1 <- function(x) {
+    prod(x)^(1/length(x))
+}
+gm1(x) # two different ways to find geometric mean
+
+gm2 <- function(x) {
+    exp(mean(log(x)))
+}
+gm2(x)
+
+gm2(x * -1)
+gm1(x * -1)
+```
+
+Why do we have different warnings for the two functions? In my mind, gm2() produces a warning message because R recognizes that the base log() function cannot have a negative domain. In gm1() we produce the same result but we don't call to any other function (aside from prod() or length() which don't have the same limitations). 
+
+# Measuring spread
+
+## Challenge 2
+
+```{r}
+ss1 <- function(x) {
+    sum((x - mean(x))^2)
+}
+ss1(x)
+
+# I have never seen anyone calculate sum of squares as ss2
+
+ss2 <- function(x) {
+    sum(x^2) - length(x) * mean(x)^2
+}
+ss2(x)
+
+ss3 <- function(x) {
+    sum(x^2) - (sum(x))^2/length(x) # why would we do this? ss1 is just preferred imho
+}
+ss3(x)
+```
+
+
+## Variance
+
+Population variance is a biased statistic and I've done the integration too many times to go through that again. We divide by n-1 to brute force and make it work <3.
+
+```{r}
+pop_v <- function(x) {
+    sum((x - mean(x))^2)/(length(x))
+}
+pop_v(x) # sum of squares divided by N
+```
+
+## Challenge 3
+
+```{r}
+sample_v <- function(x) {
+    sum((x - mean(x))^2)/(length(x) - 1)
+}
+sample_v(x)
+
+var(x)
+```
+
+Wow, var(x) is the same as sample variance.
+
+# Describing uncertainty
+
+## Challenge 4
+
+We're going to use this for confidence intervals in the next section I'm guessing. 
+
+```{r}
+SE1 <- function(x) {
+    sqrt(sample_v(x)/length(x))
+}
+SE1(x)
+
+SE2 <- function(x) {
+    sqrt(var(x)/length(x))
+}
+SE2(x)
+
+sciplot::se(x)
+```
+
+# Confidence intervals
+
+## Visualizing a normal distribution
+
+We visualize a normal distribution, both by simulating data via `rnorm()` and then making density and quantile plots via `dnorm()`, `qnorm()`, and `pnorm()`.
+
+## Confidence interval
+
+```{r}
+x <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
+
+upper <- mean(x) + qnorm(0.975, mean = 0, sd = 1) * se(x)
+lower <- mean(x) + qnorm(0.025, mean = 0, sd = 1) * se(x)  # or lower <- mean(x) - qnorm(0.975)*se(x)
+ci <- c(lower, upper)
+ci
+```
+
+We can make a function to do this! Would not recommend because parameters stay changing and confidence intervals can be finnicky.
+
+```{r}
+normalCI = function(x, CIlevel = 0.95) {
+    upper = mean(x) + qnorm(1 - (1 - CIlevel)/2) * sqrt(var(x)/length(x))
+    lower = mean(x) + qnorm((1 - CIlevel)/2) * sqrt(var(x)/length(x))
+    ci <- c(lower, upper)
+    return(ci)
+}
+normalCI(x, 0.95)  # call the function
+```
+
+We are 95% confident that... so what does this mean? Of all possible confidence intervals, 95% of them capture the true parameter, our's is just one of them.
+
+## Challenge 5
+
+```{r}
+set <- NULL  # sets up a dummy variable to hold our 10000 simulations
+# never seen someone do set <- NULL before, think I prefer c() just bc it guarantees a vector
+n <- 15
+for (i in 1:10000) {
+    set[i] <- mean(sample(x, n, replace = TRUE))
+}
+
+quantile(set, c(0.025, 0.975))
+```
+
+As n increases, the confidence interval shrinks. However, while this is interesting in concept, it has no theoretical basis. Bootstrapped samples must have n = n. The bootstrapped confidence interval is incredibly close to the normal assumption. With the normal assumption, aside from assuming the data is distributed normally, we're essentially acting as if we bootstrapped an infinite number of times. However, in practice we don't know that data is distributed normally and in fact is rarely ever distributed normally (shout out binomially distributed variables). The bootstrapped calculation more closely resembles a t-assumption and holds more weight than the normal assumption confidence interval.
